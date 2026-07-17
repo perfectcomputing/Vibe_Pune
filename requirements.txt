@@ -1,0 +1,22 @@
+# Phase 1-2: data collection
+pyyaml>=6.0
+requests>=2.31
+pandas>=2.0
+pyarrow>=14.0
+geopandas>=0.14
+shapely>=2.0
+osmnx>=1.9
+# transit + aqi layers use only requests/pandas above
+
+# Phase 3: ML pipeline (run these in Colab/Kaggle; heavy)
+# torch
+# transformers          # SegFormer, CLIP
+# open_clip_torch       # alternative CLIP implementation
+# ultralytics           # YOLOv8 detection
+
+# Phase 4-5: aggregation + app
+# h3
+# streamlit
+# folium
+# streamlit-folium
+# plotly

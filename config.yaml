@@ -1,0 +1,181 @@
+# ============================================================
+# VibePune — project configuration
+# Phase 1: scoping. Edit study areas & dimensions here, not in code.
+# ============================================================
+
+project:
+  name: vibepune
+  city: "Pune, Maharashtra, India"
+  crs: "EPSG:4326"          # lat/lon everywhere; project to EPSG:32643 (UTM 43N) for metric ops
+  h3_resolution: 9           # ~0.1 km^2 hexes; res 8 = coarser, res 10 = finer
+
+# Overall bounding box for Pune (minLon, minLat, maxLon, maxLat)
+city_bbox: [73.72, 18.44, 73.98, 18.64]
+
+# ------------------------------------------------------------
+# Study areas (Phase 1: 8 contrasting neighborhoods)
+# Each has a center point and a radius (meters) used to build a
+# per-area bbox for coverage checks and image sampling.
+# Deliberately chosen to contrast: old city vs IT corridor vs
+# leafy suburbs vs dense commercial.
+#
+# Only areas with enabled: true are processed. Current set: 6 popular
+# rental hubs for students/IT professionals. Flip flags to change.
+# ------------------------------------------------------------
+study_areas:
+  - name: koregaon_park
+    enabled: true
+    label: "Koregaon Park"
+    center: [18.5362, 73.8940]
+    radius_m: 1200
+    expected_vibe: "leafy, upscale, calm"
+  - name: old_city_peth
+    enabled: false   # great vibe contrast, but not a typical renter hub
+    label: "Old City (Shaniwar/Kasba Peth)"
+    center: [18.5195, 73.8553]
+    radius_m: 1200
+    expected_vibe: "dense, historic, bustling"
+  - name: baner
+    enabled: true
+    label: "Baner"
+    center: [18.5590, 73.7868]
+    radius_m: 1500
+    expected_vibe: "new development, mixed"
+  - name: aundh
+    enabled: false   # flip to true when scaling up
+    label: "Aundh"
+    center: [18.5636, 73.8077]
+    radius_m: 1200
+    expected_vibe: "residential, organized"
+  - name: hadapsar
+    enabled: false   # flip to true when scaling up
+    label: "Hadapsar"
+    center: [18.5089, 73.9260]
+    radius_m: 1500
+    expected_vibe: "industrial-residential mix"
+  - name: kothrud
+    enabled: true
+    label: "Kothrud"
+    center: [18.5074, 73.8077]
+    radius_m: 1200
+    expected_vibe: "dense residential"
+  - name: viman_nagar
+    enabled: true
+    label: "Viman Nagar"
+    center: [18.5679, 73.9143]
+    radius_m: 1200
+    expected_vibe: "commercial, youthful"
+  - name: hinjewadi
+    enabled: true
+    label: "Hinjewadi"
+    center: [18.5913, 73.7389]
+    radius_m: 1500
+    expected_vibe: "IT corridor, traffic-heavy"
+  - name: kharadi
+    enabled: true
+    label: "Kharadi"
+    center: [18.5515, 73.9410]
+    radius_m: 1500
+    expected_vibe: "IT hub (EON/WTC), new high-rises"
+
+# ------------------------------------------------------------
+# Vibe dimensions (the core definition of the project).
+# Each dimension lists the signals that will feed it in Phase 3-4.
+# clip_prompts are used for zero-shot CLIP scoring: score =
+# P(positive prompts) - P(negative prompts), averaged.
+# ------------------------------------------------------------
+vibe_dimensions:
+  greenery:
+    description: "Visible vegetation and shade along the street"
+    signals: [segmentation.vegetation_pct, osm.park_density]
+    clip_prompts:
+      positive:
+        - "a street with many green trees and plants"
+        - "a shaded leafy residential lane"
+      negative:
+        - "a barren street with no trees"
+        - "a dusty concrete road with no greenery"
+
+  liveliness:
+    description: "Street-level human and commercial activity"
+    signals: [detection.person_count, detection.shopfront_count, osm.poi_density]
+    clip_prompts:
+      positive:
+        - "a lively bustling street full of people and shops"
+        - "a vibrant market street"
+      negative:
+        - "a deserted empty street"
+        - "a quiet street with no activity"
+
+  calmness:
+    description: "Low traffic stress and noise proxy"
+    signals: [detection.vehicle_count, segmentation.road_pct, osm.road_class]
+    clip_prompts:
+      positive:
+        - "a calm quiet peaceful street"
+        - "a serene residential lane with little traffic"
+      negative:
+        - "a chaotic congested road full of traffic"
+        - "a noisy highway packed with vehicles"
+
+  upkeep:
+    description: "Perceived cleanliness and maintenance"
+    signals: [clip_only]
+    clip_prompts:
+      positive:
+        - "a clean well-maintained street"
+        - "a tidy street in good condition"
+      negative:
+        - "a dirty street with garbage and debris"
+        - "a run-down street in poor condition"
+
+  openness:
+    description: "Sky visibility / how open vs canyon-like the street feels"
+    signals: [segmentation.sky_pct, segmentation.building_pct]
+    clip_prompts:
+      positive:
+        - "an open wide street with lots of visible sky"
+      negative:
+        - "a narrow enclosed street between tall buildings"
+
+# ------------------------------------------------------------
+# Sampling & data collection parameters (Phase 2)
+# ------------------------------------------------------------
+sampling:
+  point_spacing_m: 50          # sample a point every 50m along the road network
+  network_type: drive          # OSMnx network type: drive | walk | all
+  max_images_per_point: 1
+  mapillary_search_radius_m: 30 # accept the nearest image within this radius of a sample point
+  min_capture_year: 2018        # ignore imagery older than this
+  prefer_non_pano: true         # flat images are easier for CLIP/segmentation
+  image_size: thumb_1024_url    # Mapillary thumbnail field to download
+
+mapillary:
+  api_root: "https://graph.mapillary.com"
+  image_fields: "id,thumb_1024_url,captured_at,computed_geometry,compass_angle,is_pano,sequence"
+  page_limit: 500               # max images per API page request
+
+# ------------------------------------------------------------
+# v2: Relocation-assistant features (added after product pivot)
+# ------------------------------------------------------------
+transit:
+  # Community-maintained GTFS for PMPML buses (Pune + Pimpri-Chinchwad),
+  # generated from the official Apli-PMPML API.
+  # Repo: https://github.com/croyla/pmpml-gtfs (check Releases for latest zip)
+  gtfs_url: "https://github.com/croyla/pmpml-gtfs/releases/latest/download/pmpml_gtfs.zip"
+  gtfs_fallback_note: "If the URL 404s, download manually from the repo Releases page into data/raw/gtfs/"
+  good_stop_access_m: 400      # <=400m walk to a bus stop counts as good access
+  walk_speed_m_per_min: 75     # ~4.5 km/h
+
+aqi:
+  # Free station data: WAQI (free token at https://aqicn.org/data-platform/token/)
+  # or OpenAQ (https://openaq.org). Stations are sparse -> IDW interpolation.
+  provider: waqi
+  waqi_bounds_endpoint: "https://api.waqi.info/map/bounds/"
+  idw_power: 2                 # inverse-distance-weighting exponent
+  max_station_distance_km: 15
+
+user_inputs:
+  # What the app asks the user for (MVP)
+  destination: "office or college location (geocoded via Nominatim, free)"
+  weights: [greenery, liveliness, calmness, upkeep, commute, aqi, essentials]
