@@ -1,4 +1,4 @@
-# VibePune 🌆
+VibePune 
 
 **"Where should I rent in Pune?" — answered with ML, street imagery, and open data.**
 
@@ -13,7 +13,7 @@ zero-shot CLIP + detection), OpenStreetMap features, the community PMPML GTFS
 feed for bus routing, and station-interpolated AQI — fused into per-hex scores
 on an interactive map. Inspired by MIT's Place Pulse urban-perception research.
 
-> 🚧 Status: Phase 1-2 (data layer). Roadmap below.
+> Status: Phase 1-2 (data layer). Roadmap below.
 
 ## How it works
 
